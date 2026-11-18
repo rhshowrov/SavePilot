@@ -1,0 +1,84 @@
+{
+  "name": "savepilot",
+  "displayName": "SavePilot",
+  "description": "Your workspace. Your changes. Your control. Review editor and disk changes, then save deliberately.",
+  "version": "0.1.0",
+  "publisher": "savepilot-local",
+  "license": "UNLICENSED",
+  "private": true,
+  "engines": { "vscode": "^1.96.0" },
+  "categories": ["Other"],
+  "extensionKind": ["workspace"],
+  "main": "./dist/extension.js",
+  "activationEvents": ["onStartupFinished"],
+  "capabilities": { "untrustedWorkspaces": { "supported": "limited", "description": "Editor changes remain visible. External monitoring and Auto Save protection require workspace trust." }, "virtualWorkspaces": { "supported": true } },
+  "scripts": {
+    "build": "npm run check && node esbuild.mjs",
+    "check": "tsc --noEmit",
+    "watch": "node esbuild.mjs --watch",
+    "test": "node --import tsx --test --test-isolation=none test/*.test.ts",
+    "test:integration": "npm run build && esbuild test/extension.host.ts --bundle --platform=node --format=cjs --external:vscode --outfile=dist/extension.host.js && node scripts/run-integration.mjs",
+    "package": "npm run build && vsce package --no-dependencies --allow-missing-repository",
+    "vscode:prepublish": "npm run build"
+  },
+  "dependencies": { "picomatch": "^4.0.3" },
+  "devDependencies": { "@types/node": "^22.19.0", "@types/picomatch": "^4.0.2", "@types/vscode": "1.96.0", "@vscode/vsce": "^3.6.2", "esbuild": "^0.25.12", "tsx": "^4.20.6", "typescript": "^5.9.3" },
+  "contributes": {
+    "viewsContainers": { "activitybar": [{ "id": "savepilot", "title": "SavePilot", "icon": "media/savepilot.svg" }] },
+    "views": { "savepilot": [
+      { "id": "savepilot.controls", "name": "Workspace control", "type": "webview", "initialSize": 2, "visibility": "visible" },
+      { "id": "savepilot.changes", "name": "Pending changes", "initialSize": 8, "icon": "media/savepilot.svg" }
+    ] },
+    "viewsWelcome": [
+      { "view": "savepilot.changes", "contents": "No pending changes.\nNo unsaved editor files or unreviewed disk changes detected.\n[Open SavePilot Settings](command:savepilot.settings)", "when": "savepilot.empty && savepilot.hasWorkspace && !savepilot.incomplete" },
+      { "view": "savepilot.changes", "contents": "Open a folder to monitor workspace changes.\n[Open Folder](command:vscode.openFolder)", "when": "!savepilot.hasWorkspace" },
+      { "view": "savepilot.changes", "contents": "Disk change status may be incomplete. See the message above and SavePilot output for details.\n[Show Details](command:savepilot.results)", "when": "savepilot.empty && savepilot.incomplete && savepilot.hasWorkspace" }
+    ],
+    "commands": [
+      { "command": "savepilot.show", "title": "Show Changes", "category": "SavePilot" },
+      { "command": "savepilot.saveAll", "title": "Save All Pending Editor Files", "category": "SavePilot", "icon": "$(save-all)", "enablement": "!savepilot.saving" },
+      { "command": "savepilot.save", "title": "Save File", "category": "SavePilot", "icon": "$(save)", "enablement": "!savepilot.saving" },
+      { "command": "savepilot.open", "title": "Open File", "category": "SavePilot", "icon": "$(go-to-file)" },
+      { "command": "savepilot.diff", "title": "Review Diff", "category": "SavePilot", "icon": "$(diff)" },
+      { "command": "savepilot.reviewed", "title": "Mark Reviewed", "category": "SavePilot", "icon": "$(check)" },
+      { "command": "savepilot.reviewAll", "title": "Mark All Disk Changes Reviewed", "category": "SavePilot" },
+      { "command": "savepilot.refresh", "title": "Refresh Changes", "category": "SavePilot", "icon": "$(refresh)" },
+      { "command": "savepilot.settings", "title": "Open Settings", "category": "SavePilot", "icon": "$(settings-gear)" },
+      { "command": "savepilot.protect", "title": "Enable Workspace Auto Save Protection", "category": "SavePilot" },
+      { "command": "savepilot.restore", "title": "Restore Previous Auto Save Setting", "category": "SavePilot" },
+      { "command": "savepilot.results", "title": "Show Save Results", "category": "SavePilot" }
+    ],
+    "menus": {
+      "view/title": [
+        { "command": "savepilot.saveAll", "when": "view == savepilot.changes", "group": "navigation@1" },
+        { "command": "savepilot.refresh", "when": "view == savepilot.changes", "group": "navigation@2" },
+        { "command": "savepilot.settings", "when": "view == savepilot.changes", "group": "settings@1" },
+        { "command": "savepilot.protect", "when": "view == savepilot.changes", "group": "settings@2" },
+        { "command": "savepilot.restore", "when": "view == savepilot.changes", "group": "settings@3" },
+        { "command": "savepilot.reviewAll", "when": "view == savepilot.changes", "group": "review@1" },
+        { "command": "savepilot.results", "when": "view == savepilot.changes", "group": "review@2" }
+      ],
+      "view/item/context": [
+        { "command": "savepilot.save", "when": "view == savepilot.changes && viewItem == unsaved", "group": "inline@1" },
+        { "command": "savepilot.diff", "when": "view == savepilot.changes && viewItem =~ /unsaved|external|deleted|conflict/", "group": "inline@2" },
+        { "command": "savepilot.reviewed", "when": "view == savepilot.changes && viewItem =~ /external|deleted/", "group": "inline@3" },
+        { "command": "savepilot.open", "when": "view == savepilot.changes && viewItem =~ /unsaved|external|conflict/", "group": "file@1" }
+      ],
+      "commandPalette": [
+        { "command": "savepilot.save", "when": "false" }, { "command": "savepilot.open", "when": "false" },
+        { "command": "savepilot.diff", "when": "false" }, { "command": "savepilot.reviewed", "when": "false" }
+      ]
+    },
+    "configuration": {
+      "title": "SavePilot",
+      "properties": {
+        "savepilot.autoSaveProtection": { "type": "boolean", "default": false, "scope": "window", "description": "Turn off editor Auto Save at workspace scope. Direct filesystem writes are not blocked. Requires workspace trust." },
+        "savepilot.restoreAutoSave": { "type": "boolean", "default": true, "scope": "window", "description": "Restore the previous workspace Auto Save value when protection is explicitly turned off, unless you changed it afterward. Uninstall or forced shutdown cannot guarantee restoration." },
+        "savepilot.notifications": { "type": "string", "enum": ["consolidated", "badgeOnly", "off"], "default": "consolidated", "description": "Announce each pending batch once, show only a badge, or suppress activity notifications and badges." },
+        "savepilot.notificationQuietPeriod": { "type": "number", "minimum": 1, "maximum": 15, "default": 3, "description": "Seconds of quiet before announcing a batch; continuous activity is announced within 15 seconds." },
+        "savepilot.externalMonitoring": { "type": "boolean", "default": true, "scope": "window", "description": "Monitor new filesystem events after activation. Changes made before activation are not reconstructed. Requires workspace trust." },
+        "savepilot.excludedDirectories": { "type": "array", "items": { "type": "string" }, "default": ["**/.git/**", "**/node_modules/**", "**/dist/**", "**/build/**", "**/.next/**", "**/.venv/**"], "description": "Workspace-relative glob patterns excluded from external monitoring. Unsaved editor documents are never hidden by these exclusions." }
+      }
+    }
+  }
+}

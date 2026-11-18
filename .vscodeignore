@@ -1,0 +1,14 @@
+src/**
+test/**
+scripts/**
+node_modules/**
+.vscode/**
+.agents/**
+.codex/**
+.aws/**
+tsconfig.json
+esbuild.mjs
+package-lock.json
+*.vsix
+dist/*.map
+dist/extension.host.js
